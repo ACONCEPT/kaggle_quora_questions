@@ -23,9 +23,9 @@ class all_data(object):
         self.train = pd.read_csv(data_folder + 'train.csv')
         self.sample_submission = pd.read_csv(data_folder + 'sample_submission.csv')
         
-#data = all_data()        
+data = all_data()        
 #test_data = data.test
-#train_data = data.train
+train_data = data.train
 #sample_submission = data.sample_submission
 
 from nltk import word_tokenize  , pos_tag
