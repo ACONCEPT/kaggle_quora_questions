@@ -8,7 +8,9 @@ This is a temporary script file.
 import sys
 import os 
 import pandas as pd
+import math
 data_folder = os.environ['HOME']  + '/repos/qqp/'
+
 
 #for thing, row in os.environ.items():        
 #    print ('{0}  : {1} '.format(thing, row)) 
@@ -16,20 +18,34 @@ data_folder = os.environ['HOME']  + '/repos/qqp/'
 
 
 #for file in os.listdir(data_folder):
-#    print ("self.{0} = pd.read_csv(data_folder + '{1}')".format(file.rstrip('.csv'),file))      
-class all_data(object):
-    def __init__(self):        
-        self.test = pd.read_csv(data_folder + 'test.csv')
-        self.train = pd.read_csv(data_folder + 'train.csv')
-        self.sample_submission = pd.read_csv(data_folder + 'sample_submission.csv')
-        
-data = all_data()        
-#test_data = data.test
-train_data = data.train
-#sample_submission = data.sample_submission
+#    print ("self.{0} = pd.read_csv(data_folder + '{1}')".format(file.rstrip('.csv'),file))      \
 
-from nltk import word_tokenize  , pos_tag
-from nltk.tag import map_tag
+
+class all_data(object):
+    def __init__(self,all_data = True,testdata = False, traindata = False, samplesubmission = False):        
+        self.data_catalog = [] 
+        if all_data:
+            testdata = True
+            traindata = True
+            samplesubmission = Tru
+        if testdata:
+            self.test_data = pd.read_csv(data_folder + 'test.csv')
+            self.data_catalog.append('test_data')
+        if traindata:
+            self.train = pd.read_csv(data_folder + 'train.csv')
+            self.data_catalog.append('train_data')
+        if samplesubmission:
+            self.sample_submission = pd.read_csv(data_folder + 'sample_submission.csv')              
+
+def get_train_data_chunks(chunk_size = 100000,n = 0):
+    max_chunks = math.ceil(len(train_data)/chunk_size)
+    if n > max_chunks:
+        print('with a chunk size of {0} maxvalue for n is {1}, {2} was requested'.format(chunk_size,max_chunnks,n))
+        raise TypeError    
+    beginning = n * chunk_size 
+    end = (n+1) * chunk_size
+    return train_data.loc[beginning:end]    
+    
 
 def tag_sentence (sentence):
     words = word_tokenize(sentence)
@@ -44,6 +60,7 @@ def prep_wordlist (alist):
     return [x.upper().rstrip().lstrip() for x in alist] 
 
 def count_matching_noun_verb(q1,q2):
+#    if isinstance(q1,basestring) and isinstance(q2,basestring): 
     q1_t = tag_sentence (q1)
     q2_t = tag_sentence (q2)
     q1_nouns  = q1_t.query("""simpletag == 'NOUN'""")
@@ -61,24 +78,40 @@ def count_matching_noun_verb(q1,q2):
     for word in q2_verbs:
         matching_verbs += q2_verbs.count(word)
     return matching_nouns, matching_verbs
+#    else:
+#        raise TypeError
         
 trainit = pd.DataFrame()
+errors = pd.DataFrame()
 for i in range(len(train_data)):
-    q1 = train_data.iloc[i]['question1']
-    q2 = train_data.iloc[i]['question2']
-    isdup = train_data.iloc[i]['is_duplicate']   
-    indx = [i]
-    nmatch, vmatch = count_matching_noun_verb(q1,q2)    
-    columns = ['noun_match','verb_match','isdup']
-    muhdata = [nmatch,vmatch,isdup]
-    new_item = pd.DataFrame(dict(zip(columns,muhdata)),index = indx)
-    trainit = trainit.append(new_item)
+    try:
+        q1 = train_data.iloc[i]['question1']
+        q2 = train_data.iloc[i]['question2']
+        isdup = train_data.iloc[i]['is_duplicate']   
+        indx = [i]
+        nmatch, vmatch = count_matching_noun_verb(q1,q2)    
+        columns = ['noun_match','verb_match','isdup']
+        muhdata = [nmatch,vmatch,isdup]
+        new_item = pd.DataFrame(dict(zip(columns,muhdata)),index = indx)
+        trainit = trainit.append(new_item)
+    except Exception as e: 
+#        print('feature extraction failed at index {0} with error {1}, dumping record in error frame'.format(i,e))
+        new_item = pd.DataFrame(dict(zip(columns,muhdata)),index = indx)        
+        errors = errors.append(new_item)
+        
+for row in next(errors.iterrows())[0]:
+    problemrows = problemrows.append(train_data.iloc[i])
 
+acheck = train_data.loc[105775: 105782]
 
+problem_questions = pd.DataFrame{}    
+    
+print (errors)    
 
+        
+    
+    
 
-
-#
 #for i in range(len(one_question_pair)):
 #    q1 = train_data.iloc[i]['question1']
 #    q2 = train_data.iloc[i]['question2']
