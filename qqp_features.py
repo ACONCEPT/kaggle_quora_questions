@@ -12,6 +12,8 @@ import math
 data_folder = os.environ['HOME']  + '/repos/qqp/'
 from nltk import word_tokenize  , pos_tag
 from nltk.tag import map_tag
+from nltk.stem import WordNetLemmatizer
+lemmatizer = WordNetLemmatizer() 
 
 def tag_sentence (sentence):
     words = word_tokenize(sentence)
@@ -44,6 +46,30 @@ def count_matching_noun_verb(q1,q2):
     for word in q2_verbs:
         matching_verbs += q2_verbs.count(word)
     return matching_nouns, matching_verbs 
+
+def count_matching_noun_verb_lemma(q1,q2):
+#    if isinstance(q1,basestring) and isinstance(q2,basestring): 
+    q1_t = tag_sentence (q1)
+    q2_t = tag_sentence (q2)
+    q1_nouns  = q1_t.query("""simpletag == 'NOUN'""")
+    q1_nouns = prep_wordlist (list(q1_nouns['word']))
+    q1_nouns_lemma = [lemmatizer.lemmatize(word) for word in q1_nouns]
+    q1_verbs  = q1_t.query("""simpletag == 'VERB'""")
+    q1_verbs = prep_wordlist (list(q1_verbs['word']))
+    q1_verbs_lemma = [lemmatizer.lemmatize(word) for word in q1_verbs]
+    q2_nouns  = q2_t.query("""simpletag == 'NOUN'""")    
+    q2_nouns = prep_wordlist (list(q2_nouns['word']))
+    q2_nouns_lemma = [lemmatizer.lemmatize(word) for word in q2_nouns]
+    q2_verbs  = q2_t.query("""simpletag == 'VERB'""")    
+    q2_verbs = prep_wordlist (list(q2_verbs['word']))
+    q2_verbs_lemma = [lemmatizer.lemmatize(word) for word in q2_verbs]
+    matching_nouns_lemma = 0
+    matching_verbs_lemma = 0    
+    for word in q1_nouns_lemma:
+        matching_nouns_lemma += q2_nouns_lemma.count(word)
+    for word in q1_verbs_lemma:
+        matching_verbs_lemma += q2_verbs_lemma.count(word)
+    return matching_nouns_lemma, matching_verbs_lemma
 
 class all_data(object):
     def __init__(self,all_data = True,traindata = False, testdata = False,  samplesubmission = False):        
@@ -147,4 +173,45 @@ class all_data(object):
 #        trainit.to_csv(data_folder + 'chunked_trained_data/train_chunk_{0}_v2'.format(self.train_chunk))
 #        errors.to_csv(data_folder + 'chunked_trained_data/errors_chunk_{0}_v2'.format(self.train_chunk))
         return trainit, errors
+    
+    def process_training_feature_chunk_v3 (self):            
+        chunk = self.get_train_data_chunk()
+        trainit = pd.DataFrame()
+        errors = pd.DataFrame()        
+        columns = ['noun_match','verb_match','isdup']
+        for i, chunkrow in chunk.iterrows():
+            try:
+                q1 = chunkrow['question1']
+                q2 = chunkrow['question2']
+                isdup = chunkrow['is_duplicate']   
+                nmatch, vmatch = count_matching_noun_verb(q1,q2)
+                nmatch_lem, vmatch_lem  = count_matching_noun_verb_lemma(q1,q2)
+                chunkrow['noun_match'] = nmatch
+                chunkrow['verb_match'] = vmatch      
+                chunkrow['noun_match_lem'] = nmatch_lem
+                chunkrow['verb_match_lem'] = vmatch_lem  
+                indx = [i]
+                new_item = pd.DataFrame(chunkrow.to_dict(),indx)
+                trainit = trainit.append(new_item)
+            except Exception as e:
+                chunkrow['error'] = e 
+                new_item = pd.DataFrame(chunkrow,index = indx)        
+                errors = errors.append(new_item)                
+#        print ("saving data and errors to {0}".format(self.train_chunk))
+#        trainit.to_csv(data_folder + 'chunked_trained_data/train_chunk_{0}_v2'.format(self.train_chunk))
+#        errors.to_csv(data_folder + 'chunked_trained_data/errors_chunk_{0}_v2'.format(self.train_chunk))
+        return trainit, errors
 
+def main():
+    data = all_data(False,True)
+    data.change_chunk_size(100)
+    data.reset_train_chunks()
+    chunk = data.get_train_data_chunk()
+    q1 = chunk.iloc[0]['question1']
+    q2 = chunk.iloc[0]['question2']
+    isdup = chunk.iloc[0]['is_duplicate']
+    lemma_noun_match , lemma_verb_match = count_matching_noun_verb_lemma(q1,q2)    
+    print ("lemma noun match : {}, lemma verb match : {}".format(lemma_noun_match, lemma_verb_match))
+    return q1, q2, lemma_noun_match, lemma_verb_match, isdup
+if __name__ == "__main__":
+    q1, q2, lem_n_match, lem_v_match, isdup = main()
