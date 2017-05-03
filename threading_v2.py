@@ -40,7 +40,7 @@ class threaded_results(qqpf.all_data):
     def process_a_chunk(self,worker, thread_name):
 #        with self.print_lock:
 #            print('processing chunk {} out of {} in  || {} ||'.format(worker,self.n_chunks,thread_name))
-        self.processed_chunk , self.error_chunk = self.process_training_feature_chunk_v2()        
+        self.processed_chunk , self.error_chunk = self.process_training_feature_chunk_v3()        
         with self.append_lock:
             self.processed_data = self.processed_data.append(self.processed_chunk)
             self.errors = self.errors.append(self.error_chunk)
@@ -59,6 +59,7 @@ class threaded_results(qqpf.all_data):
         self.reset_train_chunks()
         qitems = self.q.qsize()
         start = time.time()
+        print ('threaded processing info threads : {} chunk_size : {} #chunks : {}'.format(self.n_chunks,self.chunk_size,self.n_chunks))
         for i in range(num_threads):
             t = threading.Thread(target = self.threader)
             t.name  = 'data processing thread {}'.format(i)
@@ -69,4 +70,4 @@ class threaded_results(qqpf.all_data):
         end = time.time()
         runtime = end - start
 #        print('Entire job took: {} ' .format(runtime))
-        return {"start_time" :start, "end_time" : end,"run_time": runtime , "num_threads":num_threads,"queue_items":qitems}
+        return self, {"start_time" :start, "end_time" : end,"run_time": runtime , "num_threads":num_threads,"queue_items":qitems}

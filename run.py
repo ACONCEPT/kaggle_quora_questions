@@ -13,67 +13,58 @@ data_folder = os.environ['HOME']  + '/repos/qqp/'
 sys.path.append(scriptpath)
 from threading_v2 import threaded_results 
 
-results = threaded_results()
-results.change_chunk_size(100)
-results.queue_chunks(50)
-print('chunk_size = {}, max_chunks = {}'.format(results.chunk_size,results.max_train_chunks))
-print("qsize : {}, qempty : {}, qfull : {}".format(results.q.qsize(),results.q.empty(),results.q.full()))
+#results = threaded_results()
+#results.change_chunk_size(100)
+#results.queue_chunks(50)
+#print('chunk_size = {}, max_chunks = {}'.format(results.chunk_size,results.max_train_chunks))
+#print("qsize : {}, qempty : {}, qfull : {}".format(results.q.qsize(),results.q.empty(),results.q.full()))
 #runinfo = results.run_threads()
 
-def case_1():
+def process(chunk_size,threads = 2, chunks = 10):
+    # start up the object that processes the data
     results = threaded_results()
-    results.change_chunk_size(10)
-    results.queue_chunks(10)
-    runinfo = results.run_threads(2)
-    return runinfo
-
-def case_2():
-    results = threaded_results()
-    results.change_chunk_size(10)
-    results.queue_chunks(10)
-    runinfo = results.run_threads(4)
-    return runinfo
-
-def case_3():
-    results = threaded_results()
-    results.change_chunk_size(10)
-    results.queue_chunks(10)
-    runinfo = results.run_threads(8)
-    return runinfo
-
-def case_4():
-    results = threaded_results()
-    results.change_chunk_size(10)
-    results.queue_chunks(10)
-    runinfo = results.run_threads(8)
-    return runinfo
-
-def case_5():
-    results = threaded_results()
-    results.change_chunk_size(10)
-    results.queue_chunks(10)
-    runinfo = results.run_threads()
-    return runinfo
-
-
-case1_runinfo = pd.DataFrame()
-case2_runinfo = pd.DataFrame()
-case3_runinfo = pd.DataFrame()
-case4_runinfo = pd.DataFrame()
-case5_runinfo = pd.DataFrame()
-
-runinfo = case_1()
-
-for i in range(1000):
-    print (' case test {} out of {} '.format(i,1000))
-    runinfo = case_1()
-    runinfo2 = case_2()
-    runinfo3 = case_3()
-    runinfo4 = case_4()
-    runinfo5 = case_5() 
-    case1_runinfo = case1_runinfo.append(runinfo,ignore_index = True)
-    case2_runinfo = case2_runinfo.append(runinfo2,ignore_index = True)
-    case3_runinfo = case3_runinfo.append(runinfo3,ignore_index = True)
-    case4_runinfo = case4_runinfo.append(runinfo4,ignore_index = True)
-    case5_runinfo = case5_runinfo.append(runinfo5,ignore_index = True)
     
+    # records per chunk, 
+    # default 20,000 records
+    if not chunk_size:
+        results.change_chunk_size(100000)
+    else:
+        results.change_chunk_size(chunk_size)
+    
+    # indicates only number of chunks to be processed
+    # defaults to running all chunks 
+    if not chunks:
+        results.queue_chunks()
+    else:
+        results.queue_chunks(chunks)    
+        
+    # argument is number of worker threads to use
+    # default 1 thread per chunk.
+    # second result is runinfo dictionary with running statistics
+    if not threads:
+        results , runinfo = results.run_threads()
+    else:
+        results , runinfo = results.run_threads(threads)
+    
+    # recording the number of threads used 
+    runinfo ['threads'] = threads
+    return results.processed_data, runinfo
+
+def test_run(test_cases):
+    runinfo = pd.DataFrame()
+    for i, item in test_cases.items():
+        chunksize, threads, chunks = item
+        pdata , rundata = process(chunksize,threads,chunks)
+        runinfo = runinfo.append(rundata,ignore_index = True)
+    return pdata, runinfo
+
+
+results, runinfo = test_run({1:(False,False,False)})
+
+#runinfo = pd.DataFrame()
+#for i in range(1000):
+#    print (' case test {} out of {} '.format(i,1000))
+#    test_cases = {1 : (10,10,2), 2:(10,10,4), 3:(10,10,6),4:(10,10,8),5:(10,10,10)}#,6:(False,False,100),7:(False,False,500)}    
+#    rundata = test_run(test_cases)
+#    runinfo = runinfo.append(rundata,ignore_index = True)    
+#runinfo.to_csv(data_folder)
