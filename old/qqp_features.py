@@ -16,11 +16,137 @@ from nltk.stem import WordNetLemmatizer
 lemmatizer = WordNetLemmatizer()
 import nltk
 from nltk.tag.perceptron import PerceptronTagger
+import spacy
 #nltk.download() 
+nlp = spacy.load('en')
+tagged = pd.read_csv(data_folder + 'tagged_train.csv')
 """
 trying to find faster way to do pos_tagging.
 """
 
+
+def wordlist(sentence):
+    return prep_wordlist(word_tokenize(sentence))
+
+def add_features(df):
+    log = {}
+    s = time.time()
+    df['q1_words'] = df.question1.apply(wordlist)
+    e = time.time()
+    log['q1_wordlist_time'] = e - s    
+    s = time.time()
+    df['q1_tag'] = df.q1_words.apply(tagger.tag)
+#    df['q1_tag'] = df.q1_words.apply(pos_tag)
+    e = time.time()
+    log['q1_tag_time'] = e - s    
+    s = time.time() 
+    df['q1_simpletag'] = df.q1_tag.apply(lambda s:[(word, map_tag('en-ptb','universal',tag)) for word, tag in s])
+    e = time.time() 
+    log['q1_simpletag_time'] = e - s    
+    return df, log 
+
+def wordlist(sentence):
+    return prep_wordlist(word_tokenize(sentence))
+
+
+def add_features(df):
+    log = {}
+    s = time.time()
+    df['q1_words'] = df.question1.apply(wordlist)
+    e = time.time()
+    return df, log 
+
+item = tagged.loc[1,:]
+
+q1 = item['question1']
+q2 = item['question2']
+
+isdup = item['is_duplicate']
+
+q1_doc = nlp(q1)
+q2_doc = nlp(q2)
+
+a = q1_doc[0].text
+b = q1_doc[0].text
+
+b = q1_doc[0].vector.shape
+
+spacy
+
+
+a = q1_doc[0].dep_
+b = q1_doc[0].dep_
+
+for q1_word, q2_word in zip ( q1_doc, q2_doc):
+    print ( q1_word.text, q1_word.lemma_, q1_word.tag_,q1_word.dep_)
+    print ( q2_word.text, q2_word.lemma_, q2_word.tag_, q2_word.dep_)
+    
+    
+for q1_word in q1_doc:
+    print ( q1_word.text, q1_word.lemma_, q1_word.tag_,q1_word.dep_)
+    
+for q1_word in q2_doc:
+    print ( q1_word.text, q1_word.lemma_, q1_word.tag_,q1_word.dep_)
+    
+
+
+    
+verbs = set()
+for possible_subject in q1_doc:
+    if possible_subject.dep == nsubj and possible_subject.head.pos == VERB:
+        print (possible_subject,possible_subject.head)
+        verbs.add(possible_subject.head)
+        
+for word in q1_doc:
+    print (word, word.dep_)
+    if word.dep == pobj:
+        print ('primary object is {} '.format(word.text, word.head))
+        
+def get_chunk_dict(q):    
+    result = {}
+#    pobjs = []
+#    dobjs = []         
+    for tok in q:
+#        print (' token = {}, dep = {} , head = {}'.format(tok.text, tok.dep_, tok.head))
+        if tok.dep == nsubj and tok.head.pos == VERB:
+            result[tok.dep_] = tok
+    return result
+#        elif tok.dep  == pobj:
+#            pobjs.append(tok)
+#        elif tok.dep == dobj:
+#            dobjs.append(tok)
+
+def matching_subject_lemma(q1_toks, q2_toks):
+    
+    
+
+q1_d = dict(get_chunk_dict(q1_doc))
+q2_d = dict(get_chunk_dict(q2_doc))
+
+
+children = q1_d['nsubj'].children
+
+for child in children:
+    print(child,child.pos_,child.dep_)
+
+print(children) 
+
+print (q1_d['nsubj'].children)
+
+print (q1_d['pobj'].head.dep_)
+
+print ()
+
+for word in q1_d['nsubj'].subtree:
+    print (word, word.dep_, word.head) 
+
+print (q2_d)
+
+print (type(VERB))
+            
+for word in doc:
+    print(word.dep)
+#    print(word.text, word.lemma, word.lemma_, word.tag, word.tag_, word.pos, word.pos_)
 
 class all_data(object):
     def __init__(self,all_data = True,traindata = False, testdata = False,  samplesubmission = False):        
@@ -37,7 +163,6 @@ class all_data(object):
             self.testdata = testdata
             self.samplesubmission = samplesubmission
         if testdata:
-#            print ('adding test data')
             self.test_data = pd.read_csv(data_folder + 'test.csv')
             self.data_catalog.append('test_data')
             self.max_test_chunks = math.ceil(len(self.test_data)/self.chunk_size)        
@@ -285,25 +410,7 @@ if __name__ == "__main__":
 
 tagger = PerceptronTagger()
 
-def wordlist(sentence):
-    return prep_wordlist(word_tokenize(sentence))
 
-def add_features(df):
-    log = {}
-    s = time.time()
-    df['q1_words'] = df.question1.apply(wordlist)
-    e = time.time()
-    log['q1_wordlist_time'] = e - s    
-    s = time.time()
-    df['q1_tag'] = df.q1_words.apply(tagger.tag)
-#    df['q1_tag'] = df.q1_words.apply(pos_tag)
-    e = time.time()
-    log['q1_tag_time'] = e - s    
-    s = time.time() 
-    df['q1_simpletag'] = df.q1_tag.apply(lambda s:[(word, map_tag('en-ptb','universal',tag)) for word, tag in s])
-    e = time.time() 
-    log['q1_simpletag_time'] = e - s    
-    return df, log 
 
 
 featured_chunk, runinfo = add_features(full_data.train_data)
