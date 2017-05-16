@@ -5,139 +5,130 @@ Created on Sat Apr 29 01:07:01 2017
 
 @author: joe
 """
-
-""" 
-This module should take the training data with the features and train the classifier
-
-"""
-import numpy as np # linear algebra
-import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+from numpy import loadtxt
+from xgboost import XGBClassifier
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import accuracy_score
+import pandas as pd 
 import os
-import gc
-import matplotlib.pyplot as plt
-import seaborn as sns
-%matplotlib inline
+import sys 
+data_folder = os.environ['HOME']  + '/repos/qqp/'
+scriptpath = os.environ['HOME']  + '/repos/qqp/'
+sys.path.append(scriptpath)
+from features import nlp, features_fast, print_tokeninfo
+processed_data = pd.read_csv(data_folder + 'train_features.csv', index = True)
+"""
+machinelearningmastery.com/defelop-first-xgboost-model-python-scikit-learn/ 
+"""
+def average(alist):
+    return (sum(alist)/len(alist))
 
-pal = sns.color_palette()
+def complex_subject(subjects):
+    return len(subjects) > 1
 
-print('# File sizes')
-for f in os.listdir('../input'):
-    if 'zip' not in f:
-        print(f.ljust(30) + str(round(os.path.getsize('../input/' + f) / 1000000, 2)) + 'MB')
+def post_processing(row):
+    row['complex'] = complex_subject(row['subject_similarity_list'])    
+    row['average_similarity'] = average(row['similarity_list'] )
+    row['average_subject_similarity'] = average(row['subject_similarity_list'])
+    row['average_verb_similarity'] = average(row['verb_similarity_list'])
+    return row
+
+def print_tokeninfo(sentence):
+    for word in sentence:
+        print ("""
+text : {}
+lemma : {}
+dep : {}
+pos :  {}
+head : {}""".format(word.text,word.lemma_,word.dep_,word.pos_,word.head))
+
+view = processed_data.loc[:20,:]
+
+example = processed_data.loc[3,:]
+
+q1 = nlp(example['question1']) 
+q2 = nlp(example['question2']) 
+
+
+def subjectmatch (word1, word2):
+    return word1.dep == nsubj and word1.head.pos == VERB and word2.dep == nsubj and word2.head.pos == VERB
+
+subjects = []
+print (q1)
+for word in q1: 
+    if word.dep == nsubj and word.head.pos == VERB:
+        print (word)
+        subjects.append(word)
+
+for word in subjects:
+    print (word) 
+    
+subjects = []
+print (q2)
+print_tokeninfo(q2)
+for word in q2: 
+    if word.dep == nsubj and word.head.pos == VERB:
+        print (word)
+        subjects.append(word)
+
+for word in subjects:
+    print (word) 
         
-df_train = pd.read_csv('../input/train.csv')
-df_train.head()
-
-print('Total number of question pairs for training: {}'.format(len(df_train)))
-print('Duplicate pairs: {}%'.format(round(df_train['is_duplicate'].mean()*100, 2)))
-qids = pd.Series(df_train['qid1'].tolist() + df_train['qid2'].tolist())
-print('Total number of questions in the training data: {}'.format(len(
-    np.unique(qids))))
-print('Number of questions that appear multiple times: {}'.format(np.sum(qids.value_counts() > 1)))
-
-plt.figure(figsize=(12, 5))
-plt.hist(qids.value_counts(), bins=50)
-plt.yscale('log', nonposy='clip')
-plt.title('Log-Histogram of question appearance counts')
-plt.xlabel('Number of occurences of question')
-plt.ylabel('Number of questions')
-print()
-
-from sklearn.metrics import log_loss
-
-p = df_train['is_duplicate'].mean() # Our predicted probability
-print('Predicted score:', log_loss(df_train['is_duplicate'], np.zeros_like(df_train['is_duplicate']) + p))
-
-df_test = pd.read_csv('../input/test.csv')
-sub = pd.DataFrame({'test_id': df_test['test_id'], 'is_duplicate': p})
-sub.to_csv('naive_submission.csv', index=False)
-sub.head()
+print (type(test['verb_similarity_list']))
 
 
-df_test = pd.read_csv('../input/test.csv')
-df_test.head()
+        
+print_tokeninfo(nlp(test['question1']))
+
+print_tokeninfo(nlp(test['question2']))
+
+    try:
+        average = reduce(lambda x, y: x + y, results) /len(results)
+    except:
+        average = 0        
+        
+    try:
+        if len(subject_results) > 1 and isinstance(subject_results,list): 
+            iscomplex = True
+            subject_average = reduce(lambda x, y: x + y, subject_results) /len(subject_results)
+            verb_average = reduce(lambda x, y: x + y, verb_results) /len(verb_results)
+        else:
+            subject_average = np.nan
+            verb_average = np.nan
+    except:
+        if isinstance(verb_results,list):
+            pass
+        else:
+            average = 0  
 
 
-print('Total number of question pairs for testing: {}'.format(len(df_test)))
 
-train_qs = pd.Series(df_train['question1'].tolist() + df_train['question2'].tolist()).astype(str)
-test_qs = pd.Series(df_test['question1'].tolist() + df_test['question2'].tolist()).astype(str)
+d = data.loc[:,:]
 
-dist_train = train_qs.apply(len)
-dist_test = test_qs.apply(len)
-plt.figure(figsize=(15, 10))
-plt.hist(dist_train, bins=200, range=[0, 200], color=pal[2], normed=True, label='train')
-plt.hist(dist_test, bins=200, range=[0, 200], color=pal[1], normed=True, alpha=0.5, label='test')
-plt.title('Normalised histogram of character count in questions', fontsize=15)
-plt.legend()
-plt.xlabel('Number of characters', fontsize=15)
-plt.ylabel('Probability', fontsize=15)
+print (data.columns)
 
-print('mean-train {:.2f} std-train {:.2f} mean-test {:.2f} std-test {:.2f} max-train {:.2f} max-test {:.2f}'.format(dist_train.mean(), 
-                          dist_train.std(), dist_test.mean(), dist_test.std(), dist_train.max(), dist_test.max()))
-
-dist_train = train_qs.apply(lambda x: len(x.split(' ')))
-dist_test = test_qs.apply(lambda x: len(x.split(' ')))
-
-plt.figure(figsize=(15, 10))
-plt.hist(dist_train, bins=50, range=[0, 50], color=pal[2], normed=True, label='train')
-plt.hist(dist_test, bins=50, range=[0, 50], color=pal[1], normed=True, alpha=0.5, label='test')
-plt.title('Normalised histogram of word count in questions', fontsize=15)
-plt.legend()
-plt.xlabel('Number of words', fontsize=15)
-plt.ylabel('Probability', fontsize=15)
-
-print('mean-train {:.2f} std-train {:.2f} mean-test {:.2f} std-test {:.2f} max-train {:.2f} max-test {:.2f}'.format(dist_train.mean(), 
-                          dist_train.std(), dist_test.mean(), dist_test.std(), dist_train.max(), dist_test.max()))
+d['subject_similarity_length'] = d.subject_similarity.apply(len)
+d['verb_similarity_length'] = d.verb_similarity.apply(len)
 
 
-from wordcloud import WordCloud
-cloud = WordCloud(width=1440, height=1080).generate(" ".join(train_qs.astype(str)))
-plt.figure(figsize=(20, 15))
-plt.imshow(cloud)
-plt.axis('off')
+print (d.columns)
+
+complexones = d.query('subject_similarity_length > 1')
 
 
-qmarks = np.mean(train_qs.apply(lambda x: '?' in x))
-math = np.mean(train_qs.apply(lambda x: '[math]' in x))
-fullstop = np.mean(train_qs.apply(lambda x: '.' in x))
-capital_first = np.mean(train_qs.apply(lambda x: x[0].isupper()))
-capitals = np.mean(train_qs.apply(lambda x: max([y.isupper() for y in x])))
-numbers = np.mean(train_qs.apply(lambda x: max([y.isdigit() for y in x])))
+check = d.iloc[2]
 
-print('Questions with question marks: {:.2f}%'.format(qmarks * 100))
-print('Questions with [math] tags: {:.2f}%'.format(math * 100))
-print('Questions with full stops: {:.2f}%'.format(fullstop * 100))
-print('Questions with capitalised first letters: {:.2f}%'.format(capital_first * 100))
-print('Questions with capital letters: {:.2f}%'.format(capitals * 100))
-print('Questions with numbers: {:.2f}%'.format(numbers * 100))
+sim = check['verb_similarity']
+
+sim = []
+print (len(sim))
+
+for thing in sim:
+    print(thing)
+
+q1 = nlp(check['question1'])
+q2 = nlp(check['question1'])
 
 
-from nltk.corpus import stopwords
-
-stops = set(stopwords.words("english"))
-
-def word_match_share(row):
-    q1words = {}
-    q2words = {}
-    for word in str(row['question1']).lower().split():
-        if word not in stops:
-            q1words[word] = 1
-    for word in str(row['question2']).lower().split():
-        if word not in stops:
-            q2words[word] = 1
-    if len(q1words) == 0 or len(q2words) == 0:
-        # The computer-generated chaff includes a few questions that are nothing but stopwords
-        return 0
-    shared_words_in_q1 = [w for w in q1words.keys() if w in q2words]
-    shared_words_in_q2 = [w for w in q2words.keys() if w in q1words]
-    R = (len(shared_words_in_q1) + len(shared_words_in_q2))/(len(q1words) + len(q2words))
-    return R
-
-plt.figure(figsize=(15, 5))
-train_word_match = df_train.apply(word_match_share, axis=1, raw=True)
-plt.hist(train_word_match[df_train['is_duplicate'] == 0], bins=20, normed=True, label='Not Duplicate')
-plt.hist(train_word_match[df_train['is_duplicate'] == 1], bins=20, normed=True, alpha=0.7, label='Duplicate')
-plt.legend()
-plt.title('Label distribution over word_match_share', fontsize=15)
-plt.xlabel('word_match_share', fontsize=15)
+print_tokeninfo(q1)  
+print_tokeninfo(q2)
