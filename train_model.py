@@ -15,13 +15,23 @@ import sys
 data_folder = os.environ['HOME']  + '/repos/qqp/'
 scriptpath = os.environ['HOME']  + '/repos/qqp/'
 sys.path.append(scriptpath)
-from features import nlp, features_fast, print_tokeninfo
-processed_data = pd.read_csv(data_folder + 'train_features.csv', index = True)
+from features import nlp, features_fast, print_tokeninfo, lemma_match_f, check_stops
+#processed_data = pd.read_csv(data_folder + 'train_features.csv', index_col = 'id')
 """
 machinelearningmastery.com/defelop-first-xgboost-model-python-scikit-learn/ 
 """
-def average(alist):
-    return (sum(alist)/len(alist))
+#processed_data.columns
+
+def print_tokeninfo(sentence):
+    for word in sentence:
+        print ("""
+text : {}
+lemma : {}
+dep : {}
+pos :  {}
+head : {}""".format(word.text,word.lemma_,word.dep_,word.pos_,word.head))
+
+
 
 def complex_subject(subjects):
     return len(subjects) > 1
@@ -33,102 +43,99 @@ def post_processing(row):
     row['average_verb_similarity'] = average(row['verb_similarity_list'])
     return row
 
-def print_tokeninfo(sentence):
-    for word in sentence:
-        print ("""
-text : {}
-lemma : {}
-dep : {}
-pos :  {}
-head : {}""".format(word.text,word.lemma_,word.dep_,word.pos_,word.head))
-
-view = processed_data.loc[:20,:]
-
-example = processed_data.loc[3,:]
-
-q1 = nlp(example['question1']) 
-q2 = nlp(example['question2']) 
-
-
 def subjectmatch (word1, word2):
-    return word1.dep == nsubj and word1.head.pos == VERB and word2.dep == nsubj and word2.head.pos == VERB
+    return word1.dep == nsubj and word2.dep == nsubj 
 
-subjects = []
-print (q1)
-for word in q1: 
-    if word.dep == nsubj and word.head.pos == VERB:
-        print (word)
-        subjects.append(word)
+def clean_lists(item):
+    try:
+        if isinstance(item,str):
+            return 0
+        elif len(item) == 0 and isinstance(item,list):
+            return np.nan
+        else:
+            return item
+    except:
+        return item 
 
-for word in subjects:
-    print (word) 
+def is_subject(word):
+    return word.dep == nsubj #and word.head.pos == VERB 
     
-subjects = []
-print (q2)
-print_tokeninfo(q2)
-for word in q2: 
-    if word.dep == nsubj and word.head.pos == VERB:
-        print (word)
-        subjects.append(word)
+def similarity_features(q1,q2):        
+    results = []    
+    subject_results = [] 
+    verb_results = []
+    q1_subjects = []
+    q2_subjects = []
+    lemma_match = 0
+    subject_lemma_match = 0
+    verb_lemma_match = 0
+    for word1 in q1:
+        if is_subject(word1): 
+            q1_subjects.append(word1.text)
+        for word2 in q2:
+            if is_subject(word2) and word2.text not in q2_subjects:
+                    q2_subjects.append(word2.text)                                        
+            if check_stops(word1,word2):                
+                similarity = word1.similarity(word2)
+                lemma_match = lemma_match_func(word1,word2,lemma_match)                
+                if subjectmatch(word1,word2):
+                    subject_results.append(similarity)
+                    verb_similarity = word1.head.similarity(word2.head)                
+                    verb_results.append(verb_similarity)
+                    subject_lemma_match = lemma_match_func(word1,word2,lemma_match)
+                    verb_lemma_match = lemma_match_func(word1.head,word2.head,lemma_match)
+                results.append(similarity)                
+    if len(subject_results) == 0:
+        subject_results = np.nan
+    if len(verb_results) == 0:
+        verb_results = np.nan    
+    return results, subject_results, verb_results, subject_lemma_match, verb_lemma_match, lemma_match, q1_subjects, q2_subjects
+#    return results, q1_subjects, q2_subjects
 
-for word in subjects:
-    print (word) 
-        
-print (type(test['verb_similarity_list']))
-
-
-        
-print_tokeninfo(nlp(test['question1']))
-
-print_tokeninfo(nlp(test['question2']))
-
-    try:
-        average = reduce(lambda x, y: x + y, results) /len(results)
-    except:
-        average = 0        
-        
-    try:
-        if len(subject_results) > 1 and isinstance(subject_results,list): 
-            iscomplex = True
-            subject_average = reduce(lambda x, y: x + y, subject_results) /len(subject_results)
-            verb_average = reduce(lambda x, y: x + y, verb_results) /len(verb_results)
-        else:
-            subject_average = np.nan
-            verb_average = np.nan
-    except:
-        if isinstance(verb_results,list):
-            pass
-        else:
-            average = 0  
-
-
-
-d = data.loc[:,:]
-
-print (data.columns)
-
-d['subject_similarity_length'] = d.subject_similarity.apply(len)
-d['verb_similarity_length'] = d.verb_similarity.apply(len)
-
-
-print (d.columns)
-
-complexones = d.query('subject_similarity_length > 1')
+def features_fast(row):    
+    q1 = nlp(row['question1'])
+    q2 = nlp(row['question2'])    
+    results, subject_results, verb_results, subject_lemma_match, verb_lemma_match, lemma_match, q1_subjects, q2_subjects = similarity_features(q1,q2)            
+    row['similarity_list'] = results 
+    row['subject_similarity_list'] = subject_results
+    row['verb_similarity_list'] = verb_results
+    row['subject_match'] = subject_lemma_match
+    row['verb_match'] = verb_lemma_match
+    row['matches'] = lemma_match 
+    row['q1_subjects'] = q1_subjects
+    row['q2_subjects'] = q2_subjects 
+    return row 
 
 
-check = d.iloc[2]
 
-sim = check['verb_similarity']
+#q1 = nlp(example['question1']) 
+#
+#q2 = nlp(example['question2']) 
+#
+#processed_data_clean = processed_data.loc[:,:]
+#
+#processed_data_clean['q1_subjects'] = processed_data.q1_subjects.apply(clean_lists)
+#
+#processed_data_clean['q2_subjects'] = processed_data.q2_subjects.apply(clean_lists)
+#
+#
+#processed_data_clean = processed_data_clean.fillna(0)
+#
+#
+#unusual = processed_data_clean.query('subject_match == 0')
+#
+#unusual = unusual.query('q1_subjects != 0 and q2_subjects != 0')
+#
+#
+#check = unusual.iloc[1]
+#
+#q1 = nlp(check['question1'])
+#q2 = nlp(check['question2'])
+#
+#
+#print_tokeninfo(q1)
+#print_tokeninfo(q2)
+#
+#
 
-sim = []
-print (len(sim))
-
-for thing in sim:
-    print(thing)
-
-q1 = nlp(check['question1'])
-q2 = nlp(check['question1'])
-
-
-print_tokeninfo(q1)  
-print_tokeninfo(q2)
+fixed = unusual.apply(features_fast,axis = 1)
