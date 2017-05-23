@@ -138,6 +138,12 @@ def similarity_features_v2(q1, q2):
     dobj_head_match = int(0)  
     
     
+    pobj_sims = []
+    pobj_head_sims = []
+    pobj_match = int() 
+    pobj_head_match = int()
+    
+    
     all_pairs = []
     
     for word1 in q1:
@@ -182,23 +188,32 @@ def similarity_features_v2(q1, q2):
                 if word1.head.lemma == word2.head.lemma:
                     dobj_head_match+=1
                     
-            (avg_sim, avg_nostop_sim, avg_subj_sim, 
-             avg_verb_sim, avg_dobj_sim, avg_dobj_head_sim
-             )= averages(all_sims, nostop_sims, subject_sims, verb_sims,
-                 dobj_sims, dobj_head_sims)
+            if word1.dep == pobj and word2.dep == pobj:
+                pobj_sims.append(sim)
+                pobj_head_sims.append(word1.head.similarity(word2.head))
+                if match:
+                    pobj_match += 1
+                if word1.head.lemma == word2.head.lemma:
+                    pobj_head_match+=1
+                    
+    (avg_sim, avg_nostop_sim, avg_subj_sim, 
+     avg_verb_sim, avg_dobj_sim, avg_dobj_head_sim, avg_pobj_sims ,avg_pobj_head_sims
+     )= averages(all_sims, nostop_sims, subject_sims, verb_sims,
+     dobj_sims, dobj_head_sims, pobj_sims, pobj_head_sims )
     return (all_match, nostops_match, subjects_match, verbs_match,
                 avg_sim, avg_nostop_sim, avg_subj_sim, avg_verb_sim,
                 nostop_pairs, subject_pairs, verb_pairs,
-                avg_dobj_sim, avg_dobj_head_sim, dobj_match, dobj_head_match)
+                avg_dobj_sim, avg_dobj_head_sim, dobj_match, dobj_head_match,
+                avg_pobj_sims ,avg_pobj_head_sims, pobj_match, pobj_head_match)
 
-def averages(all_sims, nostop_sims, subject_sims, verb_sims,dobj_sims, dobj_head_sims):
+def averages(all_sims, nostop_sims, subject_sims, verb_sims,dobj_sims, dobj_head_sims,pobj_sims, pobj_head_sims):
     try:        
         avg_sim = average(all_sims) 
     except ZeroDivisionError:
         avg_sim = 0
         
     try:        
-        avg_nostop_sim = average(nostop_sims), average(subject_sims), average(verb_sims)
+        avg_nostop_sim = average(nostop_sims)
     except ZeroDivisionError:
         avg_nostop_sim = 0
         
@@ -221,7 +236,17 @@ def averages(all_sims, nostop_sims, subject_sims, verb_sims,dobj_sims, dobj_head
     except ZeroDivisionError:
         avg_dobj_head_sims = 0 
         
-    return avg_sim , avg_nostop_sim , avg_subj_sim , avg_verb_sim, avg_dobj_sims, avg_dobj_head_sims
+    try:        
+        avg_pobj_sims= average(dobj_sims)
+    except ZeroDivisionError:    
+        avg_pobj_sims = 0 
+        
+    try:        
+        avg_pobj_head_sims = average(dobj_head_sims )
+    except ZeroDivisionError:
+        avg_pobj_head_sims = 0 
+        
+    return avg_sim , avg_nostop_sim , avg_subj_sim , avg_verb_sim, avg_dobj_sims, avg_dobj_head_sims, avg_pobj_sims ,avg_pobj_head_sims
     
 
 def features_fast_v2(row):    
@@ -231,9 +256,13 @@ def features_fast_v2(row):
     (all_match, nostops_match, subjects_match, verbs_match
      , avg_sim, avg_nostop_sim, avg_subj_sim, avg_verb_sim ,     
      nostop_pairs, subject_pairs, verb_pairs, avg_dobj_sim, avg_dobj_head_sim,
-     dobj_match, dobj_head_match
+     dobj_match, dobj_head_match, 
+     avg_pobj_sims ,avg_pobj_head_sims, pobj_match, pobj_head_match
     )= similarity_features_v2(q1,q2)
     
+    row['nostop_pairs'] = nostop_pairs
+    row['subject_pairs'] = subject_pairs
+    row['verb_pairs'] = verb_pairs
     row['all_match'] = all_match
     row['nostops_match'] = nostops_match
     row['subjects_match'] = subjects_match
@@ -242,13 +271,14 @@ def features_fast_v2(row):
     row['avg_nostop_sim'] = avg_nostop_sim
     row['avg_subj_sim'] = avg_subj_sim
     row['avg_verb_sim'] = avg_verb_sim
-    row['nostop_pairs'] = nostop_pairs
-    row['subject_pairs'] = subject_pairs
-    row['verb_pairs'] = verb_pairs
     row['avg_dobj_sim'] = avg_dobj_sim
     row['avg_dobj_head_sim'] = avg_dobj_head_sim
     row['dobj_match'] = dobj_match
     row['dobj_head_match'] = dobj_head_match 
+    row['avg_pobj_sims']  = avg_pobj_sims
+    row['avg_pobj_head_sims']= avg_pobj_head_sims 
+    row['pobj_match']  = pobj_match
+    row['pobj_head_match'] = pobj_head_match 
     return row 
 
 def main ():
@@ -273,17 +303,17 @@ if __name__ == '__main__':
     processed_data, process_time = test()
     
 
-check = processed_data.iloc[1]
-
-
-print_tokeninfo(nlp(check['question1']))
-
-print_tokeninfo(nlp(check['question2']))
-
-doc = nlp(check['question1'])
-
-print(doc[-2])
-
-doc = nlp(check['question2'])
-
-print(doc[-2])
+#check = processed_data.iloc[1]
+#
+#
+#print_tokeninfo(nlp(check['question1']))
+#
+#print_tokeninfo(nlp(check['question2']))
+#
+#doc = nlp(check['question1'])
+#
+#print(doc[-2])
+#
+#doc = nlp(check['question2'])
+#
+#print(doc[-2])
