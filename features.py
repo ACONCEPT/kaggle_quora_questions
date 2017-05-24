@@ -283,7 +283,7 @@ def features_fast_v2(row):
 
 def main ():
     s = time.time()
-    processed_data = data.apply(features_fast, axis = 1 )
+    processed_data = data.apply(features_fast_v2, axis = 1 )
     e = time.time()
     process_time_1 = e - s 
     processed_data.to_csv('train_features.csv')
@@ -300,7 +300,7 @@ def test (test_size  = 50):
     return processed_data, process_time_1
 
 if __name__ == '__main__':
-    processed_data, process_time = test()
+    processed_data, process_time = main()
     
 
 #check = processed_data.iloc[1]

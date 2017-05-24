@@ -11,7 +11,6 @@ import zipfile
 
 os.listdir(os.environ['HOME'])
 os.environ['HOME']
-
 # The direct link to the Kaggle data set
 data_url = 'https://www.kaggle.com/c/quora-question-pairs/download/train.csv.zip'
 

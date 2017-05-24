@@ -22,11 +22,10 @@ import sys
 data_folder = os.environ['HOME']  + '/repos/qqp/'
 scriptpath = os.environ['HOME']  + '/repos/qqp/'
 sys.path.append(scriptpath)
-from features import nlp, features_fast, print_tokeninfo, lemma_match_f, check_stops
 
-
+#processed_data, processing_time = main()
 # split data into X and y
-processed_data.columns 
+#processed_data.columns 
  
 X = processed_data.loc[:,'all_match':'pobj_head_match']
 Y = processed_data.loc[:,'is_duplicate']
@@ -35,7 +34,7 @@ Y = processed_data.loc[:,'is_duplicate']
 
 # split data into train and test sets
 seed = 7
-test_size = 0.33
+test_size = 0.20
 X_train, X_test, y_train, y_test = train_test_split(X, Y, test_size=test_size, random_state=seed)
 
 	
